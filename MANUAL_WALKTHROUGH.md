@@ -1,238 +1,235 @@
-# Helm 手动走查 (PR26)
+# Helm 手动走查 (PR27)
 
 ## 跑命令
 
 ```bash
 cd ~/projects-ai/helm/helm-dev
 pnpm install && pnpm build
-pnpm test                            # 全部测试
-pnpm -C packages/checkpoint test     # 只看 checkpoint 测试（64 个）
-pnpm repl                            # 启动 REPL
+pnpm test                       # 全部测试
+pnpm typecheck                  # 类型检查
+pnpm repl                       # 启动 REPL
 ```
 
-## 场景 1：自动创建 — 文件编辑后看 checkpoint
-
-**启动 REPL，让 agent 编辑文件**：
+## 场景 1：README — 查看项目概览
 
 ```bash
-pnpm repl
-> create a file called hello.txt with content "hello world"
+cat README.md
+```
+
+**预期内容**：
+
+- 项目名称和简介
+- 16 个特性列表（带 emoji）
+- Quick Start 命令
+- 项目结构树
+- Usage 代码示例
+- 文档和示例链接
+
+## 场景 2：Examples — 运行示例代码
+
+**基础示例**：
+
+```bash
+npx tsx examples/basic/hello.ts
 ```
 
 **预期输出**：
 
 ```
-Checkpoint cp-002 (file_edit)
-● Created hello.txt
-  ✶ Done.
+Agent: Hello! I am Helm, your AI agent harness.
+Journal: /tmp/helm-xxx/run.jsonl
 ```
 
-**查看 checkpoint 列表**：
+**工具示例**：
 
-```
-> /checkpoint list
+```bash
+npx tsx examples/basic/tools.ts
 ```
 
 **预期输出**：
 
 ```
-Checkpoints (2):
-  cp-001 [session_start] Session start 14:30:00 (0 files)
-  cp-002 [file_edit] /path/to/hello.txt 14:30:15 (1 files)
+Agent: The result of 2 + 3 * 4 is 14.
+Tool calls: [ 'calculate' ]
 ```
 
-## 场景 2：Rewind 菜单 — /rewind 查看 checkpoint 列表
-
-**创建几个 checkpoint 后查看**：
+**Checkpoint 示例**：
 
 ```bash
-pnpm repl
-> create file a.txt with "version 1"
-> edit a.txt to say "version 2"
-> /rewind
+npx tsx examples/advanced/checkpoint.ts
 ```
 
 **预期输出**：
 
 ```
-╭─ Rewind ─────────────────────────────────────────╮
-│ > cp-003     /path/to/a.txt                       14:30:30 │
-│   cp-002     /path/to/a.txt                       14:30:25 │
-│   cp-001     Session start                         14:30:00 │
-╰──────────────────────────────────────────────────────────────╯
+Initial content: const x = 1;
+Modified content: const x = 2;
+Created checkpoint: cp-001
+Created checkpoint: cp-002
 
-Select action:
-  1. Restore code and conversation
-  2. Restore conversation only
-  3. Restore code only
-  4. Summarize from here
-  5. Summarize up to here
-  6. Cancel
+Checkpoints:
+  cp-001 [file_edit] initial version
+  cp-002 [file_edit] updated x to 2
 
-Usage: /rewind <checkpoint-id> <1-6>
+Restored to cp-001
+Restored content: const x = 1;
 ```
 
-## 场景 3：Restore code — 恢复文件到之前状态
+## 场景 3：Docs — 浏览文档
 
 ```bash
-pnpm repl
-> create file test.txt with "original content"
-# agent creates the file
-> /checkpoint list
-# 看到 cp-002 是 file_edit checkpoint
-> /checkpoint restore cp-002 code
+ls docs/
 ```
 
 **预期输出**：
 
 ```
-Restored 1 files to cp-002
+api.md          architecture.md  checkpoint.md  hooks.md
+memory.md       providers.md     telemetry.md   tools.md
 ```
 
-**验证**：
+**查看架构文档**：
 
 ```bash
-cat test.txt
-# 应显示 "original content"
+cat docs/architecture.md
 ```
 
-## 场景 4：Restore conversation — 恢复对话到之前位置
+**预期内容**：
+
+- 系统概览 ASCII 图
+- 数据流说明
+- 包依赖关系
+- 关键抽象（Provider, Tool, Journal, RunEvent）
+
+## 场景 4：Package info — 查看 package.json
 
 ```bash
-pnpm repl
-> what is 2+2?
-# agent responds
-> /checkpoint restore cp-002 conversation
+cat package.json | head -20
 ```
 
-**预期行为**：
+**预期内容**：
 
-- 对话历史恢复到 cp-002 对应的位置
-- 文件内容不变
-- 下次 agent 回答时从该位置继续
+- `name: "helm"`
+- `version: "0.1.0"`（如果有）
+- `license: "MIT"`
+- `repository` 指向 GitHub
+- `keywords` 包含 ai, agent, harness
 
-## 场景 5：Summarize — 压缩对话历史
+## 场景 5：CHANGELOG — 查看变更日志
 
 ```bash
-pnpm repl
-> explain TypeScript generics
-> explain TypeScript decorators
-> explain TypeScript modules
-> /checkpoint list
-# 找到要 summarize 的 checkpoint
-> /checkpoint restore cp-003 summarize_from
+cat CHANGELOG.md
 ```
 
-**预期行为**：
+**预期内容**：
 
-- cp-003 之后的消息被压缩为摘要
-- 释放 context 空间
-- 原始消息保留在 transcript 中
+- 版本 0.1.0，日期 2026-07-12
+- 所有 PR00-PR27 按类别列出
+- Core Infrastructure、Runtime、Extensions、CLI、Operations、Polish 分类
 
-## 场景 6：Git checkpoint — 自动 stash/commit
+## 场景 6：LICENSE — 查看许可证
 
 ```bash
-pnpm repl --git-checkpoint
-> refactor the main function
+cat LICENSE
 ```
 
-**预期行为**：
+**预期内容**：
 
-- 编辑前自动 `git stash push -m "helm-checkpoint: ..."`
-- 编辑后自动 `git commit -m "helm-checkpoint: ..."`
-- 可通过 `git stash list` 和 `git log` 查看
+- MIT License
+- Copyright 2026 Helm Contributors
 
-## 场景 7：Journal 输出 — 看 checkpoint 相关事件
-
-**命令**：
+## 场景 7：最终验证 — 运行全量检查
 
 ```bash
-pnpm repl
-> create a file demo.txt
-> /stats
-# 查看 journal 路径
-# 退出后查看 journal 文件
-cat /tmp/helm-repl-*.jsonl | grep checkpoint
+# 全量检查
+pnpm install
+pnpm typecheck
+pnpm test
+pnpm build
 ```
 
-**预期 Journal 事件**：
+**预期输出**：
 
-```json
-{"type":"checkpoint:create","runId":"repl-...","checkpointId":"cp-001","checkpointType":"session_start","files":[],"conversationIndex":0,"timestamp":...}
-{"type":"checkpoint:create","runId":"repl-...","checkpointId":"cp-002","checkpointType":"file_edit","files":["/path/to/demo.txt"],"conversationIndex":2,"timestamp":...}
-{"type":"checkpoint:create","runId":"repl-...","checkpointId":"cp-003","checkpointType":"prompt","files":[],"conversationIndex":3,"timestamp":...}
+```
+packages/core typecheck: Done
+packages/runtime typecheck: Done
+packages/cli typecheck: Done
+packages/checkpoint typecheck: Done
+packages/memory typecheck: Done
+...
+All packages typecheck: Done
+
+packages/runtime test: Tests  XX passed
+packages/cli test: Tests  XX passed
+packages/checkpoint test: Tests  64 passed
+packages/memory test: Tests  70 passed
+...
+All tests passed
+
+packages/core build: Done
+packages/runtime build: Done
+packages/cli build: Done
+...
+All packages build: Done
 ```
 
-## CLI Flags
+## 文档目录
 
-| Flag | 说明 |
+| 文件 | 内容 |
 |------|------|
-| `--no-checkpoint` | 禁用 checkpoint 自动创建 |
-| `--checkpoint-retention=N` | checkpoint 保留天数（默认 30） |
-| `--checkpoint-dir=PATH` | 自定义 checkpoint 目录（默认 ~/.helm/checkpoints） |
-| `--git-checkpoint` | 启用 git stash/commit checkpoint |
+| `docs/architecture.md` | 系统架构、数据流、包依赖 |
+| `docs/api.md` | 公共 API 参考 |
+| `docs/providers.md` | Provider 开发指南 |
+| `docs/tools.md` | Tool 开发指南 |
+| `docs/hooks.md` | Hook 系统指南 |
+| `docs/memory.md` | Memory 系统指南 |
+| `docs/checkpoint.md` | Checkpoint 系统指南 |
+| `docs/telemetry.md` | Telemetry 系统指南 |
 
-## Slash 命令
+## 示例目录
 
-| 命令 | 说明 |
+| 文件 | 内容 |
 |------|------|
-| `/checkpoint list` | 列出当前 session 的所有 checkpoint |
-| `/checkpoint restore <id> [action]` | 恢复到指定 checkpoint |
-| `/checkpoint clean` | 清理过期 checkpoint |
-| `/rewind` | 显示 rewind 菜单 |
+| `examples/basic/hello.ts` | 最简单的 agent 示例 |
+| `examples/basic/tools.ts` | 自定义工具注册 |
+| `examples/basic/provider.ts` | 自定义 Provider |
+| `examples/advanced/hooks.ts` | 生命周期 hooks |
+| `examples/advanced/memory.ts` | 跨 session 记忆 |
+| `examples/advanced/checkpoint.ts` | checkpoint/rewind |
+| `examples/advanced/eval.ts` | 评估套件 |
 
-## Restore 操作
+## 发布文件
 
-| 操作 | 代码 | 对话 | 用途 |
-|------|------|------|------|
-| `code+conversation` | ✅ 恢复 | ✅ 恢复 | 完全回退 |
-| `conversation` | ❌ 保持 | ✅ 恢复 | 重试不同代码 |
-| `code` | ✅ 恢复 | ❌ 保持 | 保留对话，撤销代码 |
-| `summarize_from` | ❌ 保持 | ✅ 压缩后续 | 释放 context |
-| `summarize_up_to` | ❌ 保持 | ✅ 压缩之前 | 保留近期细节 |
-
-## 断点位置
-
-| 文件 | 行号 | 看什么 |
-|------|------|--------|
-| `packages/checkpoint/src/store.ts` | `save()` | checkpoint 持久化 |
-| `packages/checkpoint/src/store.ts` | `load()` | checkpoint 加载 |
-| `packages/checkpoint/src/store.ts` | `clean()` | 过期清理逻辑 |
-| `packages/checkpoint/src/manager.ts` | `createFromFileEdit()` | 文件编辑 checkpoint |
-| `packages/checkpoint/src/manager.ts` | `restore()` | 恢复逻辑 |
-| `packages/cli/src/repl.ts` | `const checkpointMgr` | CheckpointManager 创建 |
-| `packages/cli/src/repl.ts` | `case "tool:call"` | pre-edit 快照 |
-| `packages/cli/src/repl.ts` | `case "tool:result"` | post-edit checkpoint 创建 |
-| `packages/cli/src/repl.ts` | `case "/rewind"` | rewind 菜单 |
+| 文件 | 用途 |
+|------|------|
+| `README.md` | 项目主页文档 |
+| `CHANGELOG.md` | 变更日志 |
+| `LICENSE` | MIT 许可证 |
+| `package.json` | 包元数据（name, version, license, repository） |
 
 ## 改动文件
 
 ```
-packages/checkpoint/src/
-├── types.ts           类型定义（Checkpoint, FileSnapshot, RestoreAction 等）
-├── store.ts           CheckpointStore 持久化（save/load/list/delete/clean）
-├── store.test.ts      12 个测试
-├── manager.ts         CheckpointManager 高层 API（create/restore/git checkpoint）
-├── manager.test.ts    16 个测试
-└── index.ts           导出
-
-packages/core/src/
-└── events.ts          新增 checkpoint:create/checkpoint:restore/checkpoint:summarize/checkpoint:clean 事件
-
-packages/cli/src/
-└── repl.ts            集成 CheckpointManager + /rewind + /checkpoint 命令
-
-packages/cli/bin/
-└── run.ts             新增 --no-checkpoint/--checkpoint-retention/--checkpoint-dir/--git-checkpoint flags
+README.md                  项目概览文档
+CHANGELOG.md               变更日志
+LICENSE                    MIT 许可证
+docs/
+├── architecture.md        系统架构
+├── api.md                 API 参考
+├── providers.md           Provider 指南
+├── tools.md               Tool 指南
+├── hooks.md               Hook 指南
+├── memory.md              Memory 指南
+├── checkpoint.md          Checkpoint 指南
+└── telemetry.md           Telemetry 指南
+examples/
+├── basic/
+│   ├── hello.ts           基础示例
+│   ├── tools.ts           工具示例
+│   └── provider.ts        Provider 示例
+└── advanced/
+    ├── hooks.ts           Hook 示例
+    ├── memory.ts          Memory 示例
+    ├── checkpoint.ts      Checkpoint 示例
+    └── eval.ts            Eval 示例
 ```
-
-## 关键设计决策
-
-1. **自动跟踪** — 文件编辑（write/edit）自动创建 checkpoint，无需手动操作
-2. **JSON 存储** — 每个 checkpoint 一个 JSON 文件，人类可读、可调试
-3. **索引文件** — `index.json` 记录所有 checkpoint 元数据，快速列表
-4. **文件快照** — 全量存储文件内容，简单可靠
-5. **大小限制** — 默认 1MB 以上文件不快照，防止磁盘爆满
-6. **Git 集成** — `--git-checkpoint` 启用 stash/commit 自动化
-7. **向后兼容** — `--no-checkpoint` 禁用时行为与 PR25 完全一致
-8. **非阻塞** — checkpoint 创建不阻塞文件编辑操作
